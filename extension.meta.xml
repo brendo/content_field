@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<extension id="content_field" status="experimental" xmlns="http://symphony-cms.com/schemas/extension/1.0">
+	<name>Content Field</name>
+	<description>A field for building content, beyond just text and images.</description>
+	<repo type="github">https://github.com/rowan-lewis/content_field</repo>
+	<types>
+		<type>Field</type>
+	</types>
+	<authors>
+		<author>
+			<name github="rowan-lewis" symphony="buzzomatic">Rowan Lewis</name>
+			<website>http://nbsp.io/</website>
+		</author>
+	</authors>
+	<releases>
+		<release version="0.1" date="2012-03-22" min="2.3" max="2.3.x" />
+	</releases>
+</extension>
