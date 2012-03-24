@@ -5,12 +5,15 @@
 	 */
 
 	class FieldContent extends Field {
+		protected $errors;
+
 		public function __construct() {
 			parent::__construct();
 
 			$this->_name = 'Content';
 			$this->_required = true;
 			$this->_showcolumn = false;
+			$this->errors = array();
 		}
 
 		public function createTable() {
@@ -53,12 +56,17 @@
 
 		public function displaySettingsPanel(XMLElement &$wrapper, $errors = null) {
 			parent::displaySettingsPanel($wrapper, $errors);
+			Extension_Content_Field::appendSettingsHeaders();
+
 			$content_types = Extension_Content_Field::getContentTypes();
 			$order = $this->get('sortorder');
 
 			$this->appendRequiredCheckbox($wrapper);
 
 			$all_settings = $this->getSettings();
+			$all_errors = isset($errors['settings'])
+				? $errors['settings']
+				: array();
 
 			foreach ($content_types as $type => $instance) {
 				$interface = new XMLElement('fieldset');
@@ -74,13 +82,49 @@
 						? $all_settings->{$type}
 						: new StdClass()
 				);
+				$messages = isset($all_errors[$type])
+					? $all_errors[$type]
+					: new MessageStack();
 
 				$instance->appendSettingsInterface(
-					$interface, "fields[$order][settings][$type]", $settings
+					$interface, "fields[$order][settings][$type]",
+					$settings, $messages
 				);
 
 				$wrapper->appendChild($interface);
 			}
+		}
+
+		public function checkFields(array &$errors, $checkForDuplicates = true) {
+			parent::checkFields($errors, $checkForDuplicates);
+
+			$content_types = Extension_Content_Field::getContentTypes();
+			$all_settings = $this->getSettings();
+			$all_errors = array();
+			$status = is_array($errors) && !empty($errors)
+				? self::__ERROR__
+				: self::__OK__;
+
+			foreach ($content_types as $type => $instance) {
+				$settings = $instance->sanitizeSettings(
+					isset($all_settings->{$type})
+						? $all_settings->{$type}
+						: new StdClass()
+				);
+				$all_errors[$type] = new MessageStack();
+				$valid = $instance->validateSettings($settings, $all_errors[$type]);
+
+				// An error occured:
+				if ($valid === false) {
+					$status = self::__ERROR__;
+				}
+			}
+
+			if ($status == self::__ERROR__) {
+				$errors['settings'] = $all_errors;
+			}
+
+			return $status;
 		}
 
 		public function commit() {
@@ -110,6 +154,8 @@
 		}
 
 		public function displayPublishPanel(XMLElement &$wrapper, $data = null, $error = null, $prefix = null, $postfix = null, $entry_id = null) {
+			Extension_Content_Field::appendPublishHeaders();
+
 			$content_types = Extension_Content_Field::getContentTypes();
 			$all_settings = $this->getSettings();
 
@@ -169,16 +215,15 @@
 				$item_data = $instance->sanitizeData($item_data);
 
 				$item = new XMLElement('li');
-				$item->addClass('content-type-' . $type);
-				$item->setAttribute('data-type', $type);
+				$item->addClass('content-type-' . $item_type);
+				$item->setAttribute('data-type', $item_type);
+				$errors = isset($this->errors[$index])
+					? $this->errors[$index]
+					: new MessageStack();
 
-				// Append header:
-				$header = new XMLElement('header');
-				$header->addClass('main');
-				$header->appendChild(
-					new XMLElement('strong', $instance->getName())
+				$instance->appendPublishInterface(
+					$item, $field_name, $item_data, $errors, $entry_id
 				);
-				$item->appendChild($header);
 
 				// Append content type:
 				$input = new XMLElement('input');
@@ -187,14 +232,6 @@
 				$input->setAttribute('value', $item_type);
 				$item->appendChild($input);
 
-				// Append interface:
-				$interface = new XMLElement('div');
-
-				$instance->appendPublishInterface(
-					$interface, $field_name, $item_data, $entry_id
-				);
-
-				$item->appendChild($interface);
 				$duplicator->appendChild($item);
 			}
 
@@ -216,13 +253,9 @@
 				$item->addClass('template content-type-' . $type);
 				$item->setAttribute('data-type', $type);
 
-				// Append header:
-				$header = new XMLElement('header');
-				$header->addClass('main');
-				$header->appendChild(
-					new XMLElement('strong', $instance->getName())
+				$instance->appendPublishInterface(
+					$item, $field_name, new StdClass(), new MessageStack(), $entry_id
 				);
-				$item->appendChild($header);
 
 				// Append content type:
 				$input = new XMLElement('input');
@@ -231,15 +264,6 @@
 				$input->setAttribute('value', $type);
 				$item->appendChild($input);
 
-				// Append interface:
-				$interface = new XMLElement('div');
-
-				$instance->appendPublishInterface(
-					$interface, $field_name,
-					new StdClass(), $entry_id
-				);
-
-				$item->appendChild($interface);
 				$duplicator->appendChild($item);
 			}
 
@@ -247,33 +271,15 @@
 			$frame->addClass('frame');
 			$frame->appendChild($duplicator);
 			$wrapper->appendChild($frame);
-
-			$script = new XMLElement('script', '
-				jQuery("ol.content-field-duplicator")
-					.symphonyDuplicator({
-						orderable: true,
-						collapsible: true
-					});
-			');
-			$wrapper->appendChild($script);
-
-			$style = new XMLElement('style', '
-				div.field.field-content > label {
-					margin-bottom: 2px;
-				}
-				div.field.field-content > div.frame {
-					margin-bottom: 15px;
-				}
-			');
-			$wrapper->appendChild($style);
 		}
 
 		public function checkPostFieldData(&$data, &$message, $entry_id = null) {
 			$content_types = Extension_Content_Field::getContentTypes();
 			$is_required = $this->get('required') == 'yes';
 			$has_content = false;
+			$this->errors = array();
 
-			if (is_array($data)) foreach ($data as $item) {
+			if (is_array($data)) foreach ($data as $index => $item) {
 				$has_content = true;
 				$item_type = $item['type'];
 				$item_data = isset($item['data'])
@@ -289,15 +295,27 @@
 					return self::__INVALID_FIELDS__;
 				}
 
+				$this->errors[$index] = new MessageStack();
+
 				$instance = $content_types[$item_type];
 				$item_data = $instance->sanitizeData($item_data);
-				$item_ok = $instance->validateData($item_data, $entry_id);
+				$valid = $instance->validateData($item_data, $this->errors[$index], $entry_id);
 
-				if ($item_ok === false) {
+				// An error occured:
+				if ($valid === false) {
+					// Show generic error message:
+					if ($this->errors[$index]->valid() === false) {
+						$message = __(
+							"An error occured in '%s'.",
+							array($this->get('label'))
+						);
+					}
+
 					return self::__INVALID_FIELDS__;
 				}
 			}
 
+			// Complain if no items where added:
 			if ($is_required && $has_content === false) {
 				$message = __(
 					"'%s' is a required field.",
@@ -311,6 +329,7 @@
 		}
 
 		public function processRawFieldData($data, &$status, &$message = null, $simulate = false, $entry_id = null) {
+			$allowed_keys = array('handle', 'value', 'value_formatted', 'type', 'data');
 			$content_types = Extension_Content_Field::getContentTypes();
 			$status = self::__OK__;
 			$results = array();
@@ -322,7 +341,10 @@
 
 				// No content type found:
 				if (array_key_exists($item['type'], $content_types) === false) {
-					$message = __('Unable to locate content type "%s".', $item['type']);
+					$message = __(
+						'Unable to locate content type "%s".',
+						array($item['type'])
+					);
 					$status = self::__ERROR__;
 
 					return $results;
@@ -342,6 +364,8 @@
 				$item_data->data = json_encode($item_data);
 
 				foreach ($item_data as $key => $value) {
+					if (in_array($key, $allowed_keys) === false) continue;
+
 					$results[$key][$index] = $value;
 				}
 			}

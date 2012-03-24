@@ -4,22 +4,11 @@
 	 * @package content_field
 	 */
 	class TextContentType implements ContentType {
-		public function getName() {
-			return 'Text';
+		public function appendSettingsHeaders(HTMLPage $page) {
+
 		}
 
-		public function appendPublishInterface(XMLElement $wrapper, $field_name, StdClass $data, $entry_id = null) {
-			$text = Widget::Textarea(
-				"{$field_name}[data]", 3, 50, (
-					isset($data->value)
-						? $data->value
-						: null
-				)
-			);
-			$wrapper->appendChild($text);
-		}
-
-		public function appendSettingsInterface(XMLElement $wrapper, $field_name, StdClass $settings = null) {
+		public function appendSettingsInterface(XMLElement $wrapper, $field_name, StdClass $settings = null, MessageStack $errors) {
 			$legend = new XMLElement('legend');
 			$legend->setValue(__('Text Content'));
 			$wrapper->appendChild($legend);
@@ -71,7 +60,60 @@
 			));
 		}
 
-		public function processData($data, $entry_id = null) {
+		public function sanitizeSettings($settings) {
+			if (is_array($settings)) {
+				$settings = (object)$settings;
+			}
+
+			else if (is_object($settings) === false) {
+				$settings = new StdClass();
+			}
+
+			if (isset($settings->{'enabled'}) === false) {
+				$settings->{'enabled'} = 'no';
+			}
+
+			if (isset($settings->{'text-size'}) === false) {
+				$settings->{'text-size'} = 'medium';
+			}
+
+			if (isset($settings->{'text-formatter'}) === false) {
+				$settings->{'text-formatter'} = null;
+			}
+
+			return $settings;
+		}
+
+		public function validateSettings(StdClass $data, MessageStack $errors) {
+			return true;
+		}
+
+		public function appendPublishHeaders(HTMLPage $page) {
+
+		}
+
+		public function appendPublishInterface(XMLElement $wrapper, $field_name, StdClass $data, MessageStack $errors, $entry_id = null) {
+			$header = new XMLElement('header');
+			$header->addClass('main');
+			$header->appendChild(
+				new XMLElement('strong', __('Text Content'))
+			);
+			$wrapper->appendChild($header);
+
+			$content = new XMLElement('div');
+			$wrapper->appendChild($content);
+
+			$text = Widget::Textarea(
+				"{$field_name}[data]", 3, 50, (
+					isset($data->value)
+						? $data->value
+						: null
+				)
+			);
+			$content->appendChild($text);
+		}
+
+		public function processData(StdClass $data, $entry_id = null) {
 			return (object)array(
 				'handle'			=> Lang::createHandle($data->value),
 				'value'				=> $data->value,
@@ -99,36 +141,7 @@
 			return $result;
 		}
 
-		public function sanitizeSettings($settings) {
-			if (is_array($settings)) {
-				$settings = (object)$settings;
-			}
-
-			else if (is_object($settings) === false) {
-				$settings = new StdClass();
-			}
-
-			if (isset($settings->{'enabled'}) === false) {
-				$settings->{'enabled'} = 'no';
-			}
-
-			if (isset($settings->{'text-size'}) === false) {
-				$settings->{'text-size'} = 'medium';
-			}
-
-			if (isset($settings->{'text-formatter'}) === false) {
-				$settings->{'text-formatter'} = null;
-			}
-
-			return $settings;
-		}
-
-		public function validateData($data, $entry_id = null) {
-			if ($is_required) {
-				return is_string($data->value)
-					&& strlen(trim($data->value)) > 0;
-			}
-
+		public function validateData(StdClass $data, MessageStack $errors, $entry_id = null) {
 			return is_string($data->value);
 		}
 	}
