@@ -18,6 +18,7 @@
 			$group->setAttribute('class', 'group');
 
 			$values = array(
+				array('auto', false, __('Auto Resize')),
 				array('small', false, __('Small Box')),
 				array('medium', false, __('Medium Box')),
 				array('large', false, __('Large Box')),
@@ -92,7 +93,7 @@
 
 		}
 
-		public function appendPublishInterface(XMLElement $wrapper, $field_name, StdClass $data, MessageStack $errors, $entry_id = null) {
+		public function appendPublishInterface(XMLElement $wrapper, $field_name, StdClass $settings, StdClass $data, MessageStack $errors, $entry_id = null) {
 			$header = new XMLElement('header');
 			$header->addClass('main');
 			$header->appendChild(
@@ -104,16 +105,17 @@
 			$wrapper->appendChild($content);
 
 			$text = Widget::Textarea(
-				"{$field_name}[data]", 3, 50, (
+				"{$field_name}[data]", 1, 50, (
 					isset($data->value)
 						? $data->value
 						: null
 				)
 			);
+			$text->addClass('size-' . $settings->{'text-size'});
 			$content->appendChild($text);
 		}
 
-		public function processData(StdClass $data, $entry_id = null) {
+		public function processData(StdClass $settings, StdClass $data, $entry_id = null) {
 			return (object)array(
 				'handle'			=> Lang::createHandle($data->value),
 				'value'				=> $data->value,
@@ -121,7 +123,7 @@
 			);
 		}
 
-		public function sanitizeData($data) {
+		public function sanitizeData(StdClass $settings, $data) {
 			$result = (object)array(
 				'value'	=> null
 			);
@@ -141,7 +143,7 @@
 			return $result;
 		}
 
-		public function validateData(StdClass $data, MessageStack $errors, $entry_id = null) {
+		public function validateData(StdClass $settings, StdClass $data, MessageStack $errors, $entry_id = null) {
 			return is_string($data->value);
 		}
 	}

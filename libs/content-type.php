@@ -44,7 +44,7 @@
 		 * @param StdClass $data
 		 * @param mixed $entry_id
 		 */
-		public function appendPublishInterface(XMLElement $wrapper, $field_name, StdClass $data, MessageStack $errors, $entry_id = null);
+		public function appendPublishInterface(XMLElement $wrapper, $field_name, StdClass $settings, StdClass $data, MessageStack $errors, $entry_id = null);
 
 		/**
 		 * Prepare the data to be saved in the database.
@@ -52,14 +52,14 @@
 		 * @param mixed $entry_id
 		 * @return StdClass
 		 */
-		public function processData(StdClass $data, $entry_id = null);
+		public function processData(StdClass $settings, StdClass $data, $entry_id = null);
 
 		/**
 		 * Make sure data is in a format that processData and validateData expect.
 		 * @param mixed $data
 		 * @return StdClass
 		 */
-		public function sanitizeData($data);
+		public function sanitizeData(StdClass $settings, $data);
 
 		/**
 		 * Check that the data is valid.
@@ -67,5 +67,5 @@
 		 * @param mixed $entry_id
 		 * @return StdClass
 		 */
-		public function validateData(StdClass $data, MessageStack $errors, $entry_id = null);
+		public function validateData(StdClass $settings, StdClass $data, MessageStack $errors, $entry_id = null);
 	}

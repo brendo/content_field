@@ -153,7 +153,7 @@
 			return Symphony::Database()->insert($fields, "tbl_fields_{$handle}");
 		}
 
-		public function displayPublishPanel(XMLElement &$wrapper, $data = null, $error = null, $prefix = null, $postfix = null, $entry_id = null) {
+		public function displayPublishPanel(XMLElement &$wrapper, $all_data = null, $error = null, $prefix = null, $postfix = null, $entry_id = null) {
 			Extension_Content_Field::appendPublishHeaders();
 
 			$content_types = Extension_Content_Field::getContentTypes();
@@ -177,10 +177,10 @@
 			$duplicator->addClass('content-field-duplicator');
 
 			// Data is given is stupid backwars form, fix it:
-			if (is_array($data)) {
+			if (is_array($all_data)) {
 				$temp = array();
 
-				foreach ($data as $key => $values) {
+				foreach ($all_data as $key => $values) {
 					if (is_array($values) === false) {
 						if (isset($temp[0]) === false) {
 							$temp[0] = array();
@@ -194,15 +194,15 @@
 					}
 				}
 
-				$data = $temp;
+				$all_data = $temp;
 			}
 
 			// Append content:
-			if (is_array($data)) foreach ($data as $index => $item) {
+			if (is_array($all_data)) foreach ($all_data as $index => $item) {
 				$field_name = "fields[$element_name][$index]";
 
-				$item_type = $item['type'];
-				$item_data = isset($item['data'])
+				$type = $item['type'];
+				$data = isset($item['data'])
 					? json_decode($item['data'])
 					: null;
 
@@ -211,25 +211,30 @@
 					continue;
 				}
 
-				$instance = $content_types[$item_type];
-				$item_data = $instance->sanitizeData($item_data);
-
-				$item = new XMLElement('li');
-				$item->addClass('content-type-' . $item_type);
-				$item->setAttribute('data-type', $item_type);
+				$instance = $content_types[$type];
+				$settings = $instance->sanitizeSettings(
+					isset($all_settings->{$type})
+						? $all_settings->{$type}
+						: new StdClass()
+				);
 				$errors = isset($this->errors[$index])
 					? $this->errors[$index]
 					: new MessageStack();
+				$data = $instance->sanitizeData($settings, $data);
+
+				$item = new XMLElement('li');
+				$item->addClass('content-type-' . $type);
+				$item->setAttribute('data-type', $type);
 
 				$instance->appendPublishInterface(
-					$item, $field_name, $item_data, $errors, $entry_id
+					$item, $field_name, $settings, $data, $errors, $entry_id
 				);
 
 				// Append content type:
 				$input = new XMLElement('input');
 				$input->setAttribute('name', "{$field_name}[type]");
 				$input->setAttribute('type', 'hidden');
-				$input->setAttribute('value', $item_type);
+				$input->setAttribute('value', $type);
 				$item->appendChild($input);
 
 				$duplicator->appendChild($item);
@@ -244,6 +249,8 @@
 						? $all_settings->{$type}
 						: new StdClass()
 				);
+				$errors = new MessageStack();
+				$data = $instance->sanitizeData($settings, null);
 
 				if ($settings->{'enabled'} !== 'yes') {
 					continue;
@@ -254,7 +261,7 @@
 				$item->setAttribute('data-type', $type);
 
 				$instance->appendPublishInterface(
-					$item, $field_name, new StdClass(), new MessageStack(), $entry_id
+					$item, $field_name, $settings, $data, $errors, $entry_id
 				);
 
 				// Append content type:
@@ -276,6 +283,7 @@
 		public function checkPostFieldData(&$data, &$message, $entry_id = null) {
 			$content_types = Extension_Content_Field::getContentTypes();
 			$is_required = $this->get('required') == 'yes';
+			$all_settings = $this->getSettings();
 			$has_content = false;
 			$this->errors = array();
 
@@ -296,10 +304,14 @@
 				}
 
 				$this->errors[$index] = new MessageStack();
-
 				$instance = $content_types[$item_type];
-				$item_data = $instance->sanitizeData($item_data);
-				$valid = $instance->validateData($item_data, $this->errors[$index], $entry_id);
+				$settings = $instance->sanitizeSettings(
+					isset($all_settings->{$type})
+						? $all_settings->{$type}
+						: new StdClass()
+				);
+				$item_data = $instance->sanitizeData($settings, $item_data);
+				$valid = $instance->validateData($settings, $item_data, $this->errors[$index], $entry_id);
 
 				// An error occured:
 				if ($valid === false) {
@@ -331,6 +343,7 @@
 		public function processRawFieldData($data, &$status, &$message = null, $simulate = false, $entry_id = null) {
 			$allowed_keys = array('handle', 'value', 'value_formatted', 'type', 'data');
 			$content_types = Extension_Content_Field::getContentTypes();
+			$all_settings = $this->getSettings();
 			$status = self::__OK__;
 			$results = array();
 
@@ -351,8 +364,13 @@
 				}
 
 				$instance = $content_types[$item_type];
-				$item_data = $instance->sanitizeData($item_data);
-				$item_data = $instance->processData($item_data, $entry_id);
+				$settings = $instance->sanitizeSettings(
+					isset($all_settings->{$type})
+						? $all_settings->{$type}
+						: new StdClass()
+				);
+				$item_data = $instance->sanitizeData($settings, $item_data);
+				$item_data = $instance->processData($settings, $item_data, $entry_id);
 
 				if ($item_ok === false) {
 					$status = self::__ERROR__;

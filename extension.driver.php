@@ -96,6 +96,7 @@
 
 				$page->addStylesheetToHead($url . '/publish.css', 'screen');
 				$page->addScriptToHead($url . '/publish.js');
+				$page->addScriptToHead($url . '/jquery.autoresize.js');
 
 				foreach (self::getContentTypes() as $instance) {
 					$instance->appendPublishHeaders($page);
