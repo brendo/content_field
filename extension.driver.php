@@ -55,7 +55,7 @@
 					$instance->appendSettingsHeaders($page);
 				}
 
-				self::$appendedHeaders &= $type;
+				self::$appendedHeaders |= $type;
 			}
 		}
 
@@ -78,7 +78,7 @@
 					$instance->appendPublishHeaders($page);
 				}
 
-				self::$appendedHeaders &= $type;
+				self::$appendedHeaders |= $type;
 			}
 		}
 
