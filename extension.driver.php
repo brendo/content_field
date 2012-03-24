@@ -50,10 +50,6 @@
 			) {
 				$field = new FieldContent();
 				$page = Administration::instance()->Page;
-				$url = URL . '/extensions/content_field/assets';
-
-				$page->addStylesheetToHead($url . '/settings.css', 'screen');
-				$page->addScriptToHead($url . '/settings.js');
 
 				foreach ($field->getInstances() as $instance) {
 					$instance->appendSettingsHeaders($page);
@@ -77,11 +73,6 @@
 			) {
 				$field = new FieldContent();
 				$page = Administration::instance()->Page;
-				$url = URL . '/extensions/content_field/assets';
-
-				$page->addStylesheetToHead($url . '/publish.css', 'screen');
-				$page->addScriptToHead($url . '/publish.js');
-				$page->addScriptToHead($url . '/jquery.autoresize.js');
 
 				foreach ($field->getInstances() as $instance) {
 					$instance->appendPublishHeaders($page);
