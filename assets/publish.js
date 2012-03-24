@@ -23,6 +23,9 @@
 				setTimeout(function() {
 					$textarea.trigger('autosize');
 				}, 0);
-			});
+			})
+
+			.find('textarea.size-auto')
+			.trigger('autosize');
 	});
 })(jQuery);
