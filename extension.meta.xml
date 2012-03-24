@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <extension id="content_field" status="experimental" xmlns="http://symphony-cms.com/schemas/extension/1.0">
 	<name>Content Field</name>
-	<description>A field for building content, beyond just text and images.</description>
+	<description>A field for building structured content, beyond just text and images.</description>
 	<repo type="github">https://github.com/rowan-lewis/content_field</repo>
 	<types>
 		<type>Field</type>
