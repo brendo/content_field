@@ -4,16 +4,17 @@
 	 * @package content_field
 	 */
 	class TextContentType implements ContentType {
-		public function appendSettingsHeaders(HTMLPage $page) {
+		public function getName() {
+			return __('Text Content');
+		}
 
+		public function appendSettingsHeaders(HTMLPage $page) {
+			$url = URL . '/extensions/content_field/assets';
+			$page->addStylesheetToHead($url . '/settings.css', 'screen');
 		}
 
 		public function appendSettingsInterface(XMLElement $wrapper, $field_name, StdClass $settings = null, MessageStack $errors) {
-			$legend = new XMLElement('legend');
-			$legend->setValue(__('Text Content'));
-			$wrapper->appendChild($legend);
-
-			// Default size
+			// Default textarea size:
 			$group = new XMLElement('div');
 			$group->setAttribute('class', 'group');
 
@@ -46,19 +47,6 @@
 				'Text Formatter'
 			));
 			$wrapper->appendChild($group);
-
-			// Enable this content type:
-			$input = Widget::Input("{$field_name}[enabled]", 'yes', 'checkbox');
-
-			if ($settings->{'enabled'} == 'yes') {
-				$input->setAttribute('checked', 'checked');
-			}
-
-			$wrapper->appendChild(Widget::Label(
-				__('%s Enable the Text content type', array(
-					$input->generate()
-				))
-			));
 		}
 
 		public function sanitizeSettings($settings) {
@@ -71,7 +59,7 @@
 			}
 
 			if (isset($settings->{'enabled'}) === false) {
-				$settings->{'enabled'} = 'no';
+				$settings->{'enabled'} = 'yes';
 			}
 
 			if (isset($settings->{'text-size'}) === false) {
@@ -96,16 +84,6 @@
 		}
 
 		public function appendPublishInterface(XMLElement $wrapper, $field_name, StdClass $settings, StdClass $data, MessageStack $errors, $entry_id = null) {
-			$header = new XMLElement('header');
-			$header->addClass('main');
-			$header->appendChild(
-				new XMLElement('strong', __('Text Content'))
-			);
-			$wrapper->appendChild($header);
-
-			$content = new XMLElement('div');
-			$wrapper->appendChild($content);
-
 			$text = Widget::Textarea(
 				"{$field_name}[data]", 1, 50, (
 					isset($data->value)
@@ -119,7 +97,7 @@
 				$text->addClass($settings->{'text-formatter'});
 			}
 
-			$content->appendChild($text);
+			$wrapper->appendChild($text);
 		}
 
 		public function processData(StdClass $settings, StdClass $data, $entry_id = null) {

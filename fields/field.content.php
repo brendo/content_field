@@ -45,17 +45,23 @@
 		 * Fetch a list of installed content types.
 		 */
 		public function getInstances() {
-			$content_types = (object)array(
-				'text'		=> new TextContentType()
+			$instances = (object)array(
+				'text-content'	=> new TextContentType()
 			);
 
 			Symphony::ExtensionManager()->notifyMembers(
 				'AppendContentType', '*', array(
-					'items'	=> $content_types
+					'items'	=> $instances
 				)
 			);
 
-			return (array)$content_types;
+			$instances = (array)$instances;
+
+			uksort($instances, function($a, $b) {
+				return strcasecmp($a, $b);
+			});
+
+			return $instances;
 		}
 
 		public function getSettings() {
@@ -72,6 +78,7 @@
 
 		public function findDefaults(array &$fields) {
 			$fields['required'] = 'yes';
+			$fields['default_type'] = 'text-content';
 			$fields['settings'] = new StdClass();
 		}
 
@@ -80,23 +87,44 @@
 			Extension_Content_Field::appendSettingsHeaders();
 
 			$all_instances = $this->getInstances();
-			$order = $this->get('sortorder');
-
-			$this->appendRequiredCheckbox($wrapper);
-
 			$all_settings = $this->getSettings();
 			$all_errors = isset($errors['settings'])
 				? $errors['settings']
 				: array();
+			$order = $this->get('sortorder');
+
+			// Default size
+			$group = new XMLElement('div');
+			$group->setAttribute('class', 'group');
+
+			$values = array();
+
+			foreach ($all_instances as $type => $instance) {
+				$values[] = array($type, $this->get('default_type') == $type, $instance->getName());
+			}
+
+			$label = Widget::Label('Default Content Type');
+			$label->appendChild(Widget::Select(
+				"fields[{$order}][default_type]", $values
+			));
+
+			$group->appendChild($label);
+			$wrapper->appendChild($group);
+
+			$this->appendRequiredCheckbox($wrapper);
 
 			foreach ($all_instances as $type => $instance) {
 				$interface = new XMLElement('fieldset');
-				$interface->addClass('content-type-' . $type);
+				$interface->addClass('content-type content-type-' . $type);
 				$interface->setAttribute('data-type', $type);
+				$field_name = "fields[{$order}][settings][$type]";
 
-				$input = Widget::Input(
-					"fields[$order][settings][$type][enabled]", 'no', 'hidden'
-				);
+				$input = Widget::Input("{$field_name}[enabled]", 'no', 'hidden');
+				$wrapper->appendChild($input);
+
+				$legend = new XMLElement('legend');
+				$legend->setValue($instance->getName());
+				$interface->appendChild($legend);
 
 				$settings = $instance->sanitizeSettings(
 					isset($all_settings->{$type})
@@ -108,9 +136,24 @@
 					: new MessageStack();
 
 				$instance->appendSettingsInterface(
-					$interface, "fields[$order][settings][$type]",
+					$interface, $field_name,
 					$settings, $messages
 				);
+
+				// Enable this content type:
+				$input = Widget::Input("{$field_name}[enabled]", 'yes', 'checkbox');
+
+				if ($settings->{'enabled'} == 'yes') {
+					$input->setAttribute('checked', 'checked');
+				}
+
+				$label = Widget::Label(
+					__('%s Enable this content type', array(
+						$input->generate()
+					))
+				);
+				$label->addClass('enable-content-type');
+				$interface->appendChild($label);
 
 				$wrapper->appendChild($interface);
 			}
@@ -157,8 +200,9 @@
 			if ($id === false) return false;
 
 			$fields = array(
-				'field_id'	=> $id,
-				'settings'	=> is_string($this->get('settings'))
+				'field_id'		=> $id,
+				'default_type'	=> $this->get('default_type'),
+				'settings'		=> is_string($this->get('settings'))
 					? $this->get('settings')
 					: json_encode($this->get('settings'))
 			);
@@ -196,6 +240,7 @@
 
 			$duplicator = new XMLElement('ol');
 			$duplicator->addClass('content-field-duplicator');
+			$duplicator->setAttribute('data-preselect', $this->get('default_type'));
 
 			// Data is given is stupid backwars form, fix it:
 			if (is_array($all_data)) {
@@ -247,8 +292,18 @@
 				$item->addClass('content-type-' . $type);
 				$item->setAttribute('data-type', $type);
 
+				$header = new XMLElement('header');
+				$header->addClass('main');
+				$header->appendChild(
+					new XMLElement('strong', $instance->getName())
+				);
+				$item->appendChild($header);
+
+				$interface = new XMLElement('div');
+				$item->appendChild($interface);
+
 				$instance->appendPublishInterface(
-					$item, $field_name, $settings, $data, $errors, $entry_id
+					$interface, $field_name, $settings, $data, $errors, $entry_id
 				);
 
 				// Append content type:
@@ -281,8 +336,18 @@
 				$item->addClass('template content-type-' . $type);
 				$item->setAttribute('data-type', $type);
 
+				$header = new XMLElement('header');
+				$header->addClass('main');
+				$header->appendChild(
+					new XMLElement('strong', $instance->getName())
+				);
+				$item->appendChild($header);
+
+				$interface = new XMLElement('div');
+				$item->appendChild($interface);
+
 				$instance->appendPublishInterface(
-					$item, $field_name, $settings, $data, $errors, $entry_id
+					$interface, $field_name, $settings, $data, $errors, $entry_id
 				);
 
 				// Append content type:

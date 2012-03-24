@@ -4,6 +4,8 @@
 	 * @package content_field
 	 */
 	interface ContentType {
+		public function getName();
+
 		/**
 		 * Append the settings interface stylesheets and scripts.
 		 */

@@ -83,6 +83,20 @@
 		}
 
 		/**
+		 * Cleanup installation.
+		 *
+		 * @return boolean
+		 */
+		public function uninstall() {
+			Symphony::Database()->query(sprintf(
+				"DROP TABLE `%s`",
+				self::FIELD_TABLE
+			));
+
+			return true;
+		}
+
+		/**
 		 * Create tables and configuration.
 		 *
 		 * @return boolean
@@ -92,6 +106,7 @@
 				CREATE TABLE IF NOT EXISTS `%s` (
 					`id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
 					`field_id` INT(11) UNSIGNED NOT NULL,
+					`default_type` VARCHAR(255) DEFAULT NULL,
 					`settings` TEXT DEFAULT NULL,
 					PRIMARY KEY (`id`),
 					KEY `field_id` (`field_id`)

@@ -1,10 +1,14 @@
 (function($) {
 	$(document).ready(function() {
 		$("ol.content-field-duplicator")
-			.symphonyDuplicator({
-				orderable: true,
-				collapsible: true
+			.each(function() {
+				$(this).symphonyDuplicator({
+					orderable: true,
+					collapsible: true,
+					preselect: $(this).data('preselect')
+				});
 			})
+
 			.on('constructshow.duplicator', function() {
 				$('.tags', this).symphonyTags();
 			});
