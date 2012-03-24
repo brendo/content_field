@@ -4,6 +4,10 @@
 	 * @package content_field
 	 */
 
+	require_once __DIR__ . '/../libs/message-stack.php';
+	require_once __DIR__ . '/../libs/content-type.php';
+	require_once __DIR__ . '/../libs/text-content-type.php';
+
 	class FieldContent extends Field {
 		protected $errors;
 
@@ -37,6 +41,23 @@
 			");
 		}
 
+		/**
+		 * Fetch a list of installed content types.
+		 */
+		public function getInstances() {
+			$content_types = (object)array(
+				'text'		=> new TextContentType()
+			);
+
+			Symphony::ExtensionManager()->notifyMembers(
+				'AppendContentType', '*', array(
+					'items'	=> $content_types
+				)
+			);
+
+			return (array)$content_types;
+		}
+
 		public function getSettings() {
 			if (is_object($this->get('settings'))) {
 				return $this->get('settings');
@@ -58,7 +79,7 @@
 			parent::displaySettingsPanel($wrapper, $errors);
 			Extension_Content_Field::appendSettingsHeaders();
 
-			$content_types = Extension_Content_Field::getContentTypes();
+			$all_instances = $this->getInstances();
 			$order = $this->get('sortorder');
 
 			$this->appendRequiredCheckbox($wrapper);
@@ -68,7 +89,7 @@
 				? $errors['settings']
 				: array();
 
-			foreach ($content_types as $type => $instance) {
+			foreach ($all_instances as $type => $instance) {
 				$interface = new XMLElement('fieldset');
 				$interface->addClass('content-type-' . $type);
 				$interface->setAttribute('data-type', $type);
@@ -98,14 +119,14 @@
 		public function checkFields(array &$errors, $checkForDuplicates = true) {
 			parent::checkFields($errors, $checkForDuplicates);
 
-			$content_types = Extension_Content_Field::getContentTypes();
+			$all_instances = $this->getInstances();
 			$all_settings = $this->getSettings();
 			$all_errors = array();
 			$status = is_array($errors) && !empty($errors)
 				? self::__ERROR__
 				: self::__OK__;
 
-			foreach ($content_types as $type => $instance) {
+			foreach ($all_instances as $type => $instance) {
 				$settings = $instance->sanitizeSettings(
 					isset($all_settings->{$type})
 						? $all_settings->{$type}
@@ -156,7 +177,7 @@
 		public function displayPublishPanel(XMLElement &$wrapper, $all_data = null, $error = null, $prefix = null, $postfix = null, $entry_id = null) {
 			Extension_Content_Field::appendPublishHeaders();
 
-			$content_types = Extension_Content_Field::getContentTypes();
+			$all_instances = $this->getInstances();
 			$all_settings = $this->getSettings();
 
 			$sortorder = $this->get('sortorder');
@@ -207,11 +228,11 @@
 					: null;
 
 				// No content type found:
-				if (array_key_exists($item['type'], $content_types) === false) {
+				if (array_key_exists($item['type'], $all_instances) === false) {
 					continue;
 				}
 
-				$instance = $content_types[$type];
+				$instance = $all_instances[$type];
 				$settings = $instance->sanitizeSettings(
 					isset($all_settings->{$type})
 						? $all_settings->{$type}
@@ -241,7 +262,7 @@
 			}
 
 			// Append content templates:
-			foreach ($content_types as $type => $instance) {
+			foreach ($all_instances as $type => $instance) {
 				$field_name = "fields[$element_name][-1]";
 
 				$settings = $instance->sanitizeSettings(
@@ -281,8 +302,8 @@
 		}
 
 		public function checkPostFieldData(&$data, &$message, $entry_id = null) {
-			$content_types = Extension_Content_Field::getContentTypes();
 			$is_required = $this->get('required') == 'yes';
+			$all_instances = $this->getInstances();
 			$all_settings = $this->getSettings();
 			$has_content = false;
 			$this->errors = array();
@@ -294,7 +315,7 @@
 					? $item['data'] : null;
 
 				// No content type found:
-				if (array_key_exists($item['type'], $content_types) === false) {
+				if (array_key_exists($item['type'], $all_instances) === false) {
 					$message = __(
 						'Unable to locate content type "%s".',
 						array($item['type'])
@@ -304,7 +325,7 @@
 				}
 
 				$this->errors[$index] = new MessageStack();
-				$instance = $content_types[$item_type];
+				$instance = $all_instances[$item_type];
 				$settings = $instance->sanitizeSettings(
 					isset($all_settings->{$type})
 						? $all_settings->{$type}
@@ -340,20 +361,20 @@
 			return self::__OK__;
 		}
 
-		public function processRawFieldData($data, &$status, &$message = null, $simulate = false, $entry_id = null) {
+		public function processRawFieldData($all_data, &$status, &$message = null, $simulate = false, $entry_id = null) {
 			$allowed_keys = array('handle', 'value', 'value_formatted', 'type', 'data');
-			$content_types = Extension_Content_Field::getContentTypes();
+			$all_instances = $this->getInstances();
 			$all_settings = $this->getSettings();
 			$status = self::__OK__;
 			$results = array();
 
-			if (is_array($data)) foreach ($data as $index => $item) {
-				$item_type = $item['type'];
-				$item_data = isset($item['data'])
+			if (is_array($all_data)) foreach ($all_data as $index => $item) {
+				$type = $item['type'];
+				$data = isset($item['data'])
 					? $item['data'] : null;
 
 				// No content type found:
-				if (array_key_exists($item['type'], $content_types) === false) {
+				if (array_key_exists($item['type'], $all_instances) === false) {
 					$message = __(
 						'Unable to locate content type "%s".',
 						array($item['type'])
@@ -363,25 +384,18 @@
 					return $results;
 				}
 
-				$instance = $content_types[$item_type];
+				$instance = $all_instances[$type];
 				$settings = $instance->sanitizeSettings(
 					isset($all_settings->{$type})
 						? $all_settings->{$type}
 						: new StdClass()
 				);
-				$item_data = $instance->sanitizeData($settings, $item_data);
-				$item_data = $instance->processData($settings, $item_data, $entry_id);
+				$data = $instance->sanitizeData($settings, $data);
+				$data = $instance->processData($settings, $data, $entry_id);
+				$data->type = $type;
+				$data->data = json_encode($data);
 
-				if ($item_ok === false) {
-					$status = self::__ERROR__;
-
-					return $results;
-				}
-
-				$item_data->type = $item_type;
-				$item_data->data = json_encode($item_data);
-
-				foreach ($item_data as $key => $value) {
+				foreach ($data as $key => $value) {
 					if (in_array($key, $allowed_keys) === false) continue;
 
 					$results[$key][$index] = $value;
@@ -389,6 +403,81 @@
 			}
 
 			return $results;
+		}
+
+		public function fetchIncludableElements() {
+			return array(
+				$this->get('element_name') . ': all-items',
+				$this->get('element_name') . ': one-items',
+				$this->get('element_name') . ': three-items'
+			);
+		}
+
+		public function appendFormattedElement(XMLElement $wrapper, $all_data, $encode = false, $mode = null, $entry_id = null) {
+			$all_instances = $this->getInstances();
+			$all_settings = $this->getSettings();
+
+			// Data is given is stupid backwars form, fix it:
+			if (is_array($all_data)) {
+				$temp = array();
+
+				foreach ($all_data as $key => $values) {
+					if (is_array($values) === false) {
+						if (isset($temp[0]) === false) {
+							$temp[0] = array();
+						}
+
+						$temp[0][$key] = $values;
+					}
+
+					else foreach ($values as $index => $value) {
+						$temp[$index][$key] = $value;
+					}
+				}
+
+				$all_data = $temp;
+			}
+
+			$element = new XMLElement($this->get('element_name'));
+			$element->setAttribute('mode', $mode);
+
+			if (is_array($all_data)) foreach ($all_data as $index => $item) {
+				$type = $item['type'];
+				$data = isset($item['data'])
+					? json_decode($item['data'])
+					: null;
+
+				// Limit reached
+				if ($mode == 'one-items' && $index > 0) break;
+				if ($mode == 'three-items' && $index > 2) break;
+
+				// No content type found:
+				if (array_key_exists($item['type'], $all_instances) === false) {
+					continue;
+				}
+
+				$instance = $all_instances[$type];
+				$settings = $instance->sanitizeSettings(
+					isset($all_settings->{$type})
+						? $all_settings->{$type}
+						: new StdClass()
+				);
+				$errors = isset($this->errors[$index])
+					? $this->errors[$index]
+					: new MessageStack();
+				$data = $instance->sanitizeData($settings, $data);
+
+				$item = new XMLElement('item');
+				$item->setAttribute('type', $type);
+
+				$instance->appendFormattedElement(
+					$item, $settings, $data, $entry_id
+				);
+
+				$element->appendChild($item);
+			}
+
+			$wrapper->appendChild($element);
 		}
 
 		public function prepareTableValue($data, XMLElement $link = null, $entry_id = null) {

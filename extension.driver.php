@@ -37,23 +37,6 @@
 		static protected $appendedHeaders = 0;
 
 		/**
-		 * Fetch a list of installed content types.
-		 */
-		public static function getContentTypes() {
-			$content_types = (object)array(
-				'text'		=> new TextContentType()
-			);
-
-			Symphony::ExtensionManager()->notifyMembers(
-				'AppendContentType', '*', array(
-					'items'	=> $content_types
-				)
-			);
-
-			return (array)$content_types;
-		}
-
-		/**
 		 * Add settings interface headers to the page.
 		 */
 		static public function appendSettingsHeaders() {
@@ -65,13 +48,14 @@
 				&& Administration::instance() instanceof Administration
 				&& Administration::instance()->Page instanceof HTMLPage
 			) {
+				$field = new FieldContent();
 				$page = Administration::instance()->Page;
 				$url = URL . '/extensions/content_field/assets';
 
 				$page->addStylesheetToHead($url . '/settings.css', 'screen');
 				$page->addScriptToHead($url . '/settings.js');
 
-				foreach (self::getContentTypes() as $instance) {
+				foreach ($field->getInstances() as $instance) {
 					$instance->appendSettingsHeaders($page);
 				}
 
@@ -91,6 +75,7 @@
 				&& Administration::instance() instanceof Administration
 				&& Administration::instance()->Page instanceof HTMLPage
 			) {
+				$field = new FieldContent();
 				$page = Administration::instance()->Page;
 				$url = URL . '/extensions/content_field/assets';
 
@@ -98,7 +83,7 @@
 				$page->addScriptToHead($url . '/publish.js');
 				$page->addScriptToHead($url . '/jquery.autoresize.js');
 
-				foreach (self::getContentTypes() as $instance) {
+				foreach ($field->getInstances() as $instance) {
 					$instance->appendPublishHeaders($page);
 				}
 

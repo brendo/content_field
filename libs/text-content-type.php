@@ -79,7 +79,7 @@
 			}
 
 			if (isset($settings->{'text-formatter'}) === false) {
-				$settings->{'text-formatter'} = null;
+				$settings->{'text-formatter'} = 'none';
 			}
 
 			return $settings;
@@ -112,14 +112,30 @@
 				)
 			);
 			$text->addClass('size-' . $settings->{'text-size'});
+
+			if ($settings->{'text-formatter'} != 'none') {
+				$text->addClass($settings->{'text-formatter'});
+			}
+
 			$content->appendChild($text);
 		}
 
 		public function processData(StdClass $settings, StdClass $data, $entry_id = null) {
+			if ($settings->{'text-formatter'} != 'none') {
+				$tfm = new TextformatterManager();
+				$formatter = $tfm->create($settings->{'text-formatter'});
+				$formatted = $formatter->run($data->value);
+				$formatted = preg_replace('/&(?![a-z]{0,4}\w{2,3};|#[x0-9a-f]{2,6};)/i', '&amp;', $formatted);
+			}
+
+			else {
+				$formatted = General::sanitize($data->value);
+			}
+
 			return (object)array(
-				'handle'			=> Lang::createHandle($data->value),
+				'handle'			=> null,
 				'value'				=> $data->value,
-				'value_formatted'	=> htmlentities($data->value)
+				'value_formatted'	=> $formatted
 			);
 		}
 
@@ -145,5 +161,9 @@
 
 		public function validateData(StdClass $settings, StdClass $data, MessageStack $errors, $entry_id = null) {
 			return is_string($data->value);
+		}
+
+		public function appendFormattedElement(XMLElement $wrapper, StdClass $settings, StdClass $data, $entry_id = null) {
+			$wrapper->setValue($data->value_formatted);
 		}
 	}

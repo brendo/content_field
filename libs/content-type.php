@@ -68,4 +68,6 @@
 		 * @return StdClass
 		 */
 		public function validateData(StdClass $settings, StdClass $data, MessageStack $errors, $entry_id = null);
+
+		public function appendFormattedElement(XMLElement $wrapper, StdClass $settings, StdClass $data, $entry_id = null);
 	}
