@@ -7,8 +7,6 @@
 			})
 			.on('constructshow.duplicator', function() {
 				$('.tags', this).symphonyTags();
-				//$('div.field.field-content textarea.size-auto')
-				//	.trigger('autosize');
 			});
 
 		$('div.field.field-content')
@@ -26,8 +24,5 @@
 					$textarea.trigger('autosize');
 				}, 0);
 			});
-
-		$('div.field.field-content textarea.size-auto')
-			.trigger('autosize');
 	});
 })(jQuery);
