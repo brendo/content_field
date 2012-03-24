@@ -75,7 +75,7 @@
 			}
 
 			if (isset($settings->{'text-size'}) === false) {
-				$settings->{'text-size'} = 'medium';
+				$settings->{'text-size'} = 'auto';
 			}
 
 			if (isset($settings->{'text-formatter'}) === false) {
