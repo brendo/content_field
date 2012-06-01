@@ -366,7 +366,7 @@
 			$wrapper->appendChild($frame);
 		}
 
-		public function checkPostFieldData(&$data, &$message, $entry_id = null) {
+		public function checkPostFieldData($data, &$message, $entry_id = null) {
 			$is_required = $this->get('required') == 'yes';
 			$all_instances = $this->getInstances();
 			$all_settings = $this->getSettings();
