@@ -392,8 +392,8 @@
 				$this->errors[$index] = new MessageStack();
 				$instance = $all_instances[$item_type];
 				$settings = $instance->sanitizeSettings(
-					isset($all_settings->{$type})
-						? $all_settings->{$type}
+					isset($all_settings->{$item_type})
+						? $all_settings->{$item_type}
 						: new StdClass()
 				);
 				$item_data = $instance->sanitizeData($settings, $item_data);
