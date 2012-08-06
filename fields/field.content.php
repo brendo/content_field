@@ -455,14 +455,15 @@
 						? $all_settings->{$type}
 						: new StdClass()
 				);
+
 				$data = $instance->sanitizeData($settings, $data);
 				$data = $instance->processData($settings, $data, $entry_id);
-				$data->type = $type;
-				$data->data = json_encode($data);
 
-				foreach ($data as $key => $value) {
-					if (in_array($key, $allowed_keys) === false) continue;
+				$row = $instance->processRowData($settings, $data, $entry_id);
+				$row->type = $type;
+				$row->data = json_encode($data);
 
+				foreach ($row as $key => $value) {
 					$results[$key][$index] = $value;
 				}
 			}

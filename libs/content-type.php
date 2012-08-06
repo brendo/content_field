@@ -57,6 +57,14 @@
 		public function processData(StdClass $settings, StdClass $data, $entry_id = null);
 
 		/**
+		 * Prepare the "row" data to be saved in the database.
+		 * @param StdClass $data
+		 * @param mixed $entry_id
+		 * @return StdClass
+		 */
+		public function processRowData(StdClass $settings, StdClass $data, $entry_id = null);
+
+		/**
 		 * Make sure data is in a format that processData and validateData expect.
 		 * @param mixed $data
 		 * @return StdClass
