@@ -85,7 +85,7 @@
 
 		public function appendPublishInterface(XMLElement $wrapper, $field_name, StdClass $settings, StdClass $data, MessageStack $errors, $entry_id = null) {
 			$text = Widget::Textarea(
-				"{$field_name}[data]", 1, 50, (
+				"{$field_name}[data][value]", 1, 50, (
 					isset($data->value)
 						? $data->value
 						: null
