@@ -4,11 +4,13 @@
 	 * @package content_field
 	 */
 
+	require_once FACE . '/interface.exportablefield.php';
+	require_once FACE . '/interface.importablefield.php';
 	require_once __DIR__ . '/../libs/message-stack.php';
 	require_once __DIR__ . '/../libs/content-type.php';
 	require_once __DIR__ . '/../libs/text-content-type.php';
 
-	class FieldContent extends Field {
+	class FieldContent extends Field implements ExportableField, ImportableField {
 		protected $errors;
 
 		public function __construct() {
@@ -427,7 +429,6 @@
 		}
 
 		public function processRawFieldData($all_data, &$status, &$message = null, $simulate = false, $entry_id = null) {
-			$allowed_keys = array('handle', 'value', 'value_formatted', 'type', 'data');
 			$all_instances = $this->getInstances();
 			$all_settings = $this->getSettings();
 			$status = self::__OK__;
@@ -548,5 +549,110 @@
 
 		public function prepareTableValue($data, XMLElement $link = null, $entry_id = null) {
 			return null;
+		}
+
+		/**
+		 * Give the field some data and ask it to return a value.
+		 *
+		 * @param mixed $all_data
+		 * @param integer $entry_id
+		 * @return array|null
+		 */
+		public function prepareImportValue($all_data, $entry_id = null) {
+			$all_instances = $this->getInstances();
+			$all_settings = $this->getSettings();
+			$results = array();
+
+			if (is_array($all_data)) foreach ($all_data as $index => $item) {
+				$type = $item['type'];
+				$data = isset($item['data'])
+					? $item['data'] : null;
+
+				// No content type found:
+				if (array_key_exists($item['type'], $all_instances) === false) {
+					$message = __(
+						'Unable to locate content type "%s".',
+						array($item['type'])
+					);
+
+					return $results;
+				}
+
+				$instance = $all_instances[$type];
+				$settings = $instance->sanitizeSettings(
+					isset($all_settings->{$type})
+						? $all_settings->{$type}
+						: new StdClass()
+				);
+
+				$data = $instance->sanitizeData($settings, $data);
+				$data = $instance->processData($settings, $data, $entry_id);
+
+				$row = $instance->processRowData($settings, $data, $entry_id);
+				$row->type = $type;
+				$row->data = json_encode($data);
+
+				foreach ($row as $key => $value) {
+					$results[$key][$index] = $value;
+				}
+			}
+
+			return $results;
+		}
+
+		/**
+		 * Return a list of supported export modes for use with `prepareExportValue`.
+		 *
+		 * @return array
+		 */
+		public function getExportModes() {
+			return array(
+				'getPostdata' =>		ExportableField::POSTDATA
+			);
+		}
+
+		/**
+		 * Give the field some data and ask it to return a value using one of many
+		 * possible modes.
+		 *
+		 * @param mixed $all_data
+		 * @param integer $mode
+		 * @param integer $entry_id
+		 * @return array|null
+		 */
+		public function prepareExportValue($all_data, $mode, $entry_id = null) {
+			$all_instances = $this->getInstances();
+			$all_settings = $this->getSettings();
+			$results = array();
+
+			// Data is given is stupid backwars form, fix it:
+			if (is_array($all_data)) {
+				$temp = array();
+
+				foreach ($all_data as $key => $values) {
+					if (is_array($values) === false) {
+						if (isset($temp[0]) === false) {
+							$temp[0] = array();
+						}
+
+						$temp[0][$key] = $values;
+					}
+
+					else foreach ($values as $index => $value) {
+						$temp[$index][$key] = $value;
+					}
+				}
+
+				$all_data = $temp;
+			}
+
+			if (is_array($all_data)) foreach ($all_data as $index => $item) {
+				$results[] = array(
+					'type' =>	$item['type'],
+					'data' =>	json_decode($item['data'], true)
+				);
+			}
+
+			return $results;
 		}
 	}
